@@ -10,6 +10,7 @@ TagManager:
   - pickupMask
   - Chicken
   - flower
+  - ground
   layers:
   - Default
   - TransparentFX
