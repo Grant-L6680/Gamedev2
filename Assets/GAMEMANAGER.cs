@@ -1,6 +1,7 @@
 using System.Collections;
 using UnityEngine;
 using TMPro;
+using UnityEngine.UI; // needed for Image
 
 public class EnduranceManager : MonoBehaviour
 {
@@ -10,6 +11,10 @@ public class EnduranceManager : MonoBehaviour
     [SerializeField] private TMP_Text chickenCountText;
     [SerializeField] private TMP_Text playerHealthText;
     [SerializeField] private TMP_Text gardenHealthText;
+
+    [Header("Damage Overlay")]
+    [SerializeField] private Image damageOverlayImage; // assign the red overlay image here
+    [SerializeField] private float damageOverlayDuration = 0.5f;
 
     [Header("Chicken Settings")]
     [SerializeField] private GameObject chickenPrefab;
@@ -30,7 +35,7 @@ public class EnduranceManager : MonoBehaviour
 
     [Header("Player Damage")]
     [SerializeField] private int playerDamage = 1;
-    [SerializeField] private float playerDamageInterval = 1.5f;  // <-- NEW TIMER CONTROL
+    [SerializeField] private float playerDamageInterval = 1.5f;
 
     [Header("Garden Damage Over Time")]
     [SerializeField] private int gardenDamageAmount = 2;
@@ -39,18 +44,24 @@ public class EnduranceManager : MonoBehaviour
     private float survivalTime = 0f;
     private int playerHealth;
     private int gardenHealth;
+    private int previousPlayerHealth;
 
     private Transform playerTransform;
     private Transform flowerTransform;
 
     private float gardenDamageTimer = 0f;
-    private float playerDamageTimer = 0f; // <-- NEW TIMER
+    private float playerDamageTimer = 0f;
 
     private void Start()
     {
         playerHealth = playerMaxHealth;
+        previousPlayerHealth = playerHealth;
         gardenHealth = gardenMaxHealth;
         UpdateHealthUI();
+
+        // Hide overlay image at start
+        if (damageOverlayImage != null)
+            damageOverlayImage.gameObject.SetActive(false);
 
         playerTransform = GameObject.FindGameObjectWithTag("Player")?.transform;
         flowerTransform = GameObject.FindGameObjectWithTag("flower")?.transform;
@@ -59,10 +70,47 @@ public class EnduranceManager : MonoBehaviour
         StartCoroutine(UpdateTimer());
     }
 
+
+
+
+
+
+    public void AddGardenHealth(int amount)
+    {
+        gardenHealth += amount;
+        gardenHealth = Mathf.Min(gardenHealth, gardenMaxHealth); // Optional: clamp to max
+        UpdateHealthUI();
+    }
+
+
+
+
+
+
+
     private void Update()
     {
         ApplyGardenDamageOverTime();
         ApplyPlayerDamage();
+        CheckHealthChange();
+    }
+
+    private void CheckHealthChange()
+    {
+        if (playerHealth < previousPlayerHealth)
+        {
+            if (damageOverlayImage != null)
+                StartCoroutine(FlashDamageOverlay());
+
+            previousPlayerHealth = playerHealth;
+        }
+    }
+
+    private IEnumerator FlashDamageOverlay()
+    {
+        damageOverlayImage.gameObject.SetActive(true);
+        yield return new WaitForSeconds(damageOverlayDuration);
+        damageOverlayImage.gameObject.SetActive(false);
     }
 
     // --------------------------------------------------
@@ -104,14 +152,13 @@ public class EnduranceManager : MonoBehaviour
     }
 
     // --------------------------------------------------
-    // PLAYER DAMAGE (now on cooldown)
+    // PLAYER DAMAGE
     // --------------------------------------------------
     private void ApplyPlayerDamage()
     {
         if (playerTransform == null) return;
 
         GameObject[] chickens = GameObject.FindGameObjectsWithTag("Chicken");
-
         bool chickenClose = false;
 
         foreach (GameObject c in chickens)
@@ -169,7 +216,7 @@ public class EnduranceManager : MonoBehaviour
     }
 
     // --------------------------------------------------
-    // UI + TIMER
+    // TIMER
     // --------------------------------------------------
     private IEnumerator UpdateTimer()
     {
@@ -208,6 +255,7 @@ public class EnduranceManager : MonoBehaviour
         playerHealth -= amount;
         playerHealth = Mathf.Max(0, playerHealth);
         UpdateHealthUI();
+
         if (playerHealth <= 0)
             GameOver();
     }
@@ -217,6 +265,7 @@ public class EnduranceManager : MonoBehaviour
         gardenHealth -= amount;
         gardenHealth = Mathf.Max(0, gardenHealth);
         UpdateHealthUI();
+
         if (gardenHealth <= 0)
             GameOver();
     }
